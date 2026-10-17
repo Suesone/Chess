@@ -100,3 +100,41 @@ test('动态示范期间可直接操作，错走后仍可沿路线重试',async(
  await page.getByRole('button',{name:/马：跳一个 L/}).click();await expect(ghost).toHaveCount(1);
  await ghost.evaluate(img=>(img as HTMLImageElement).decode());await page.screenshot({path:`test-results/guided-${info.project.name}.png`,fullPage:true});await move(page,'g1f3');await expect(page.getByText('本课已完成，进度已记录')).toBeVisible();
 });
+
+async function equivalentFixture(page:Page){
+ const original=puzzles.find(p=>p.theme==='hangingPiece')!;
+ const fen='7k/8/8/R2q4/8/8/8/3R3K w - - 0 1',game=new Chess(fen);
+ const steps=['a5d5','h8g8','d5d8'].map(uci=>{const m=game.move({from:uci.slice(0,2),to:uci.slice(2,4)});return {uci,san:m.san,text:m.san};});
+ const fixture=puzzles.map(p=>p.id===original.id?{...p,startFen:fen,steps}:p);
+ await page.route(/\/src\/content\/puzzles\.json(?:\?.*)?$/,route=>route.fulfill({contentType:'application/javascript',body:`export default ${JSON.stringify(fixture)}`}));
+ await page.goto('/#train');await page.getByRole('button',{name:/无保护棋子/}).click();
+ return original.id;
+}
+test('同题两种直接将死均通过，回放采用实际走法',async({page})=>{
+ const puzzle=puzzles.find(p=>p.id==='001KR')!;
+ await page.addInitScript(({id})=>localStorage.setItem('first-move.progress.v1',JSON.stringify({version:1,lessons:[],solved:[],mistakes:[id],settings:{level:'beginner',side:'w',coach:true,dests:true},pgn:'',updatedAt:new Date().toISOString()})),{id:puzzle.id});
+ await page.goto('/#train');await page.getByRole('button',{name:/错题重练/}).click();
+ await move(page,'d1d8');await expect(page.getByRole('heading',{name:'又掌握了一点'})).toBeVisible();
+ await expect(page.locator('.solution-list')).toContainText('Rd8#');await expect(page.locator('.solution-list')).not.toContainText('Rf8#');
+ await page.getByRole('button',{name:'回看关键变化'}).click();await expect(page.getByRole('button',{name:'同主题下一题'})).toBeEnabled({timeout:5000});
+});
+test('真实引擎接受等效吃子，后续提示与回放沿新的解法',async({page})=>{
+ test.setTimeout(45000);const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+ const id=await equivalentFixture(page);await move(page,'d1d5');
+ await expect(page.getByText('对方已经应对。继续完成下一步。')).toBeVisible({timeout:20000});
+ for(let i=0;i<3;i++)await page.getByRole('button',{name:i===0?'给我一点提示':/再提示一点/}).click();
+ const hint=await page.locator('.hint-line').last().textContent(),squares=hint!.match(/([a-h][1-8]) → ([a-h][1-8])/)!;
+ await move(page,squares[1]+squares[2]);await expect(page.getByRole('heading',{name:'又掌握了一点'})).toBeVisible();
+ await expect(page.locator('.solution-list')).toContainText('Rdxd5');await expect(page.locator('.solution-list')).not.toContainText('Raxd5');
+ const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('first-move.progress.v1')!));expect(saved.solved).toContain(id);expect(saved.mistakes).not.toContain(id);
+ await page.getByRole('button',{name:'回看关键变化'}).click();await expect(page.getByRole('button',{name:'同主题下一题'})).toBeEnabled({timeout:6000});expect(errors).toEqual([]);
+});
+test('战术核验失败不记错，切换主题取消旧任务',async({page})=>{
+ await page.route('**/engine/stockfish-19-lite-single.js',route=>route.abort());const id=await equivalentFixture(page);await move(page,'d1d5');
+ await expect(page.getByRole('button',{name:'重新核验这一步'})).toBeVisible({timeout:25000});
+ expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('first-move.progress.v1')!).mistakes)).not.toContain(id);
+ await page.unroute('**/engine/stockfish-19-lite-single.js');await page.getByRole('button',{name:'重新核验这一步'}).click();
+ await page.getByRole('button',{name:/一步将死/}).click();await expect(page.getByText('先看懂，再出手')).toBeVisible();
+ await page.waitForTimeout(1200);expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('first-move.progress.v1')!).solved)).not.toContain(id);
+ await expect(page.locator('.player-label')).not.toContainText('无保护棋子');
+});

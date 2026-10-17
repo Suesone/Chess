@@ -22,7 +22,7 @@ export class Engine {
   await this.wait(l=>l==='readyok',10000,()=>this.worker!.postMessage('isready'));
   this.state('ready');
  }
- search(fen:string,options:{skill?:number;ms?:number;depth?:number}={}):Promise<EngineResult>{
+ search(fen:string,options:{skill?:number;ms?:number;depth?:number;searchMoves?:string[]}={}):Promise<EngineResult>{
   const generation=this.generation;
   const task=async()=>{
    if(generation!==this.generation)throw new DOMException('Cancelled','AbortError');
@@ -41,7 +41,7 @@ export class Engine {
       }
       if(line.startsWith('bestmove ')){clearTimeout(timer);this.rejects.delete(fail);this.listener=null;resolve({...last,best:line.split(' ')[1]});}
      };
-     for(const cmd of ['setoption name UCI_LimitStrength value false',`setoption name Skill Level value ${options.skill??20}`,'setoption name Hash value 16','setoption name MultiPV value 1',`position fen ${fen}`,`go movetime ${options.ms??500}${options.depth?` depth ${options.depth}`:''}`])this.worker!.postMessage(cmd);
+     for(const cmd of ['setoption name UCI_LimitStrength value false',`setoption name Skill Level value ${options.skill??20}`,'setoption name Hash value 16','setoption name MultiPV value 1',`position fen ${fen}`,`go movetime ${options.ms??500}${options.depth?` depth ${options.depth}`:''}${options.searchMoves?.length?` searchmoves ${options.searchMoves.join(' ')}`:''}`])this.worker!.postMessage(cmd);
     });
     if(generation!==this.generation)throw new DOMException('Cancelled','AbortError');
     this.state('ready');return result;

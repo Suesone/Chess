@@ -17,3 +17,9 @@ it('取消活动及排队任务，忽略旧结果，可用新 worker 重试',asy
  const next=engine.search('new');await tick();workers[0].emit('bestmove h2h4');workers[1].emit('info depth 10 score cp 0 pv e2e4');workers[1].emit('bestmove e2e4');expect((await next).best).toBe('e2e4');engine.cancel();
 });
 it('加载错误返回可重试错误，不伪装成用户取消',async()=>{const w=new FakeWorker();w.postMessage=()=>{};const engine=new Engine(()=>{},()=>w as WorkerLike);const pending=engine.search('start').catch(e=>e);await tick();w.onerror?.call(w as unknown as Worker,{} as ErrorEvent);const error=await pending;expect(error.name).not.toBe('AbortError');expect(error.message).toContain('失败');engine.cancel();});
+it('核验搜索将根走法限制传给引擎，避免把任意最佳走法当作候选评价',async()=>{
+ const w=new FakeWorker(),engine=new Engine(()=>{},()=>w as WorkerLike);
+ const pending=engine.search('position',{depth:16,ms:3000,searchMoves:['d1d5']});await tick();
+ expect(w.commands.at(-1)).toBe('go movetime 3000 depth 16 searchmoves d1d5');
+ w.emit('info depth 16 score cp 700 pv d1d5 h8g8');w.emit('bestmove d1d5');expect((await pending).best).toBe('d1d5');engine.cancel();
+});
