@@ -1,0 +1,5 @@
+Stockfish.js 19.0.1, unmodified lite single-threaded build.
+Exact corresponding source and build instructions: https://github.com/nmrugg/stockfish.js/tree/v19.0.1
+Source archive: https://github.com/nmrugg/stockfish.js/archive/refs/tags/v19.0.1.tar.gz
+Stockfish: https://stockfishchess.org/
+License: GPL-3.0 (Copying.txt).
