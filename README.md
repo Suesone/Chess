@@ -26,6 +26,28 @@ npm run build
 npm run preview
 ```
 
+### Cloudflare Workers（已创建 Workers 项目时）
+
+仓库自带 `wrangler.jsonc`，将 `dist/` 作为纯静态资源部署；不需要 Cloudflare Vite 插件或服务端入口。Worker 名称为 `chess`，与当前 Cloudflare 项目保持一致。页面采用 hash 路由，未找到的资源正常返回 404。
+
+在 Cloudflare 项目 **Settings → Build** 的 Git 构建设置中填写：
+
+| 项目 | 值 |
+| --- | --- |
+| Production branch | `main` |
+| Build command | `npm run build` |
+| Deploy command | `npx wrangler deploy` |
+| Root directory | 仓库根目录（留空或 `/`） |
+| Node.js | 24 或更新版本；可设置 `NODE_VERSION=24.17.0` |
+
+必须先构建再部署。Workers Builds 的构建命令与部署命令分开配置；不要只填 `npx wrangler deploy` 并期待它替 Vite 构建网页。Wrangler 已固定版本，避免每次部署临时安装不同版本或触发自动迁移。
+
+本地只验证、不上传：`npm run deploy:check`。实际部署：`npm run deploy`（需要自己的 Cloudflare 登录和权限）。若构建设置中有预览命令，保留 Cloudflare 默认值。
+
+### Cloudflare Pages（另行创建 Pages 项目时）
+
+连接同一 GitHub 仓库，构建命令填 `npm run build`，输出目录填 `dist`，生产分支选 `main`，Node.js 使用 24 或更新版本。Pages 不需要填写 `wrangler deploy` 部署命令。
+
 将 `dist/` 整个目录上传至静态网站托管服务。支持子路径部署，保留 engine/、pieces/、licenses/ 及 source.zip。服务器应把 `.wasm` 作为 `application/wasm`、`.js` 作为 JavaScript 提供。使用单线程 Stockfish，无需 COOP/COEP 响应头。不能通过双击 index.html 的 file:// 地址运行。
 
 构建会生成本版本源码下载包，页面“关于与开源”提供下载入口。公开发布时应保留该入口、许可声明和对应的引擎源码链接。

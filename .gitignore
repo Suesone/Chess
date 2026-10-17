@@ -8,3 +8,8 @@ test-results/
 
 # Generated during the production build
 /public/source.zip
+
+# Local Cloudflare development state
+.wrangler/
+.dev.vars
+.dev.vars.*
