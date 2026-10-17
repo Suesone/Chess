@@ -50,7 +50,7 @@ npm run preview
 
 将 `dist/` 整个目录上传至静态网站托管服务。支持子路径部署，保留 engine/、pieces/、licenses/ 及 source.zip。服务器应把 `.wasm` 作为 `application/wasm`、`.js` 作为 JavaScript 提供。使用单线程 Stockfish，无需 COOP/COEP 响应头。不能通过双击 index.html 的 file:// 地址运行。
 
-构建会生成本版本源码下载包，页面“关于与开源”提供下载入口。公开发布时应保留该入口、许可声明和对应的引擎源码链接。
+构建使用纯 JavaScript 生成本版本源码下载包，不依赖系统 `zip` 命令，页面“关于与开源”提供下载入口。公开发布时应保留该入口、许可声明和对应的引擎源码链接。
 
 ## 功能
 
